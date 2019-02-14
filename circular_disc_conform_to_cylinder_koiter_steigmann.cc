@@ -47,13 +47,20 @@ namespace TestSoln
 double A = 1.0;
 double B = 1.0;
 // The coupling of the stretching energy
-double eta = 0;
-double p_mag = 0.; 
-double radius_of_curvature = Pi; 
 double nu = 0.3;
 double h = 0.01;
-// const double eta_xy = 1.0;//h*h;
-// double eta_z = 1.0;//h;
+double eta_u = 1;
+double eta_sigma = 1;
+double radius_of_curvature = Pi; 
+double p_mag=pow(radius_of_curvature,3)*pow(h,2)/(12.*(1-pow(nu,2)));
+
+/// Update the problem_parameters
+void update_problem_parameters()
+ {
+  eta_u = 1;
+  eta_sigma = 1;
+  p_mag=pow(radius_of_curvature,3)*pow(h,2)/(12.*(1-pow(nu,2)));
+ }
 
 /*                     PARAMETRIC BOUNDARY DEFINITIONS                        */
 // Here we create the geom objects for the Parametric Boundary Definition 
@@ -912,14 +919,14 @@ int main(int argc, char **argv)
   // Initial guess `nearby'
   TestSoln::h=0.1;
   TestSoln::radius_of_curvature=Pi/2.0001;
+  TestSoln::update_problem_parameters();
   problem.set_initial_values_to_exact_solution();
-  TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
   problem.newton_solve();
  
   // Test Parameters 
   TestSoln::h=0.1;
   TestSoln::radius_of_curvature=Pi/2.0;
-  TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
+  TestSoln::update_problem_parameters();
   problem.newton_solve();
   problem.doc_solution();
   // Short circuit
@@ -928,13 +935,13 @@ int main(int argc, char **argv)
 
  // Set to zero before initial solve
  TestSoln::radius_of_curvature=0.0;
- TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
+ TestSoln::update_problem_parameters();
  // Loop Curvatures to get to desired curvature
  for(unsigned i=0;i<n_step;++i)
   {
   //Increment
   TestSoln::radius_of_curvature+=Pi/(n_step);
-  TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
+  TestSoln::update_problem_parameters();
   oomph_info<<"Solving for curvature=" << TestSoln::radius_of_curvature<<"\n";
   // Try newton solve and dump if caught
   try {
@@ -975,6 +982,7 @@ int main(int argc, char **argv)
   {
   //Increment
   TestSoln::h+=(h_target - h_initial)/(n_h_step);
+  TestSoln::update_problem_parameters();
   oomph_info<<"Solving for curvature=" << TestSoln::radius_of_curvature<<"\n";
   try {
     problem.newton_solve();
