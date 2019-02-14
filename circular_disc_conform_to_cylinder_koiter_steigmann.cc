@@ -50,10 +50,10 @@ double B = 1.0;
 double eta = 0;
 double p_mag = 0.; 
 double radius_of_curvature = Pi; 
-const double nu = 0.3;
+double nu = 0.3;
 double h = 0.01;
-const double eta_xy = 1.0;//h*h;
-double eta_z = 1.0;//h;
+// const double eta_xy = 1.0;//h*h;
+// double eta_z = 1.0;//h;
 
 /*                     PARAMETRIC BOUNDARY DEFINITIONS                        */
 // Here we create the geom objects for the Parametric Boundary Definition 
@@ -144,34 +144,34 @@ void get_normal_and_tangent(const Vector<double>& x, Vector<double>& n,
 //Exact solution for constant pressure, circular domain and resting boundary conditions
 void get_exact_w(const Vector<double>& xi, Vector<double>& w)
 {
- const double x = xi[0], y = xi[1];
-w[0] =  sin(radius_of_curvature*x)/radius_of_curvature-x;
-w[1] =  cos(radius_of_curvature*x)-1.0;
-w[2] =  0.0;
-w[3] = -sin(radius_of_curvature*x)*radius_of_curvature;
-w[4] =  0.0;
-w[5] =  0.0;
-
-w[6] =  0.0;
-w[7] =  0.0;
-w[8] =  0.0;
-w[9] =  0.0;
-w[10] = 0.0;
-w[11] = 0.0;
+ const double x = xi[0]/*, y = xi[1]*/;
+ w[0] =  sin(radius_of_curvature*x)/radius_of_curvature-x;
+ w[1] =  cos(radius_of_curvature*x)-1.0;
+ w[2] =  0.0;
+ w[3] = -sin(radius_of_curvature*x)*radius_of_curvature;
+ w[4] =  0.0;
+ w[5] =  0.0;
  
-w[12] = (cos(radius_of_curvature*x)-1.0)/radius_of_curvature;
-w[13] =-sin(radius_of_curvature*x);
-w[14] = 0.0;
-w[15] =-cos(radius_of_curvature*x)*radius_of_curvature;
-w[16] = 0.0;
-w[17] = 0.0;
+ w[6] =  0.0;
+ w[7] =  0.0;
+ w[8] =  0.0;
+ w[9] =  0.0;
+ w[10] = 0.0;
+ w[11] = 0.0;
+  
+ w[12] = (cos(radius_of_curvature*x)-1.0)/radius_of_curvature;
+ w[13] =-sin(radius_of_curvature*x);
+ w[14] = 0.0;
+ w[15] =-cos(radius_of_curvature*x)*radius_of_curvature;
+ w[16] = 0.0;
+ w[17] = 0.0;
 }
 
 //Exact solution for constant pressure, circular domain and resting boundary conditions
 void get_exact_w_radial(const Vector<double>& xi, Vector<double>& w)
 {
  const double x = xi[0], y = xi[1], K=radius_of_curvature;
- const double r = sqrt(x*x+y*y), t = atan2(y,x),r2 = (x*x+y*y);
+ const double r = sqrt(x*x+y*y), r2 = (x*x+y*y)/*, t = atan2(y,x)*/;
 w[0] =  sin(radius_of_curvature*x)/radius_of_curvature-x;
 w[1] =  (cos(K*x)-1)*x/r;
 w[2] = -(cos(K*x)-1)*y;
@@ -234,95 +234,7 @@ apply_boundary_conditions();
 }
 
 /// Set the initial values to the exact solution (useful for debugging)
-void set_initial_values_to_exact_solution()
-{
-// Loop over all elements and reset the values
-unsigned n_element = Bulk_mesh_pt->nelement();
-for(unsigned e=0;e<n_element;e++)
-{
- // Upcast from GeneralisedElement to the present element
- ELEMENT* el_pt = dynamic_cast<ELEMENT*>(Bulk_mesh_pt->element_pt(e));
- unsigned nnode = el_pt->nnode();
- for(unsigned i=0;i<3;++i)
-  {
-   // Containers
-   Vector<double> x(2),w(18,0.0);
-   // Get node pointer
-   Node* nod_pt = el_pt->node_pt(i);
-   // Get x 
-   x[0]=nod_pt->x(0);
-   x[1]=nod_pt->x(1);
-   // Get test
-   TestSoln::get_exact_w(x,w);
-   // Set value
-   for(unsigned k=0;k<3;++k)
-    {
-    for(unsigned l=0 ; l<6;++l)
-     {
-      const unsigned index = el_pt->u_index_koiter_model(l,k);
-      nod_pt->set_value(index,w[6*k+l]);
-     }
-    }
-  }
-  // Pin the internal dofs
-  const unsigned n_internal_dofs = el_pt->number_of_internal_dofs();
-  for(unsigned i=0;i<n_internal_dofs;++i)
-   {
-   // Containers
-   Vector<double> x(2,0.0), s(2,0.0), w(18,0.0);
-   // Get internal data
-   Data* internal_data_pt = el_pt->internal_data_pt(1);
-   el_pt->get_internal_dofs_location(i,s);
-   // Get test
-   el_pt->get_coordinate_x(s,x); 
-   TestSoln::get_exact_w_radial(x,w);
-   // HERE need a function that can give us this lookup
-   for(unsigned k=0; k<3; ++k)
-    {
-     // The bubble index
-     const unsigned index =i+k*n_internal_dofs;
-     internal_data_pt->set_value(index,w[6*k+0]);
-    }
-   }  
-
-  //Just loop over the boundary elements
-  unsigned nbound = Outer_boundary1 + 1;
-  for(unsigned b=0;b<nbound;b++)
-   {
-   const unsigned nb_element = Bulk_mesh_pt->nboundary_element(b);
-   for(unsigned e=0;e<nb_element;e++)
-    {
-     // Get pointer to bulk element adjacent to b
-     ELEMENT* el_pt = dynamic_cast<ELEMENT*>(
-      Bulk_mesh_pt->boundary_element_pt(b,e));
-     // Loop over vertices of the element (i={0,1,2} always!)
-     for(unsigned i=0;i<3;++i)
-      {
-       Node* nod_pt = el_pt->node_pt(i);
-       // If it is on the bth boundary
-       if(nod_pt -> is_on_boundary(b))
-        {
-         // Set the values of the unknowns that aren't pinned
-         Vector<double> x(2,0.0),w(18,0.0);
-         x[0] = nod_pt->x(0);
-         x[1] = nod_pt->x(1);
-         TestSoln::get_exact_w_radial(x,w);
-         // Just set the nonzero values -> the others are pinned
-         // Set value
-         for(unsigned k=0;k<3;++k)
-          {
-          for(unsigned l=0 ; l<6;++l)
-           {
-            const unsigned index = el_pt->u_index_koiter_model(l,k);
-            nod_pt->set_value(index,w[6*k+l]);
-           }
-          }
-        }
-      }
-    }
-   }
-}// End loop over elements
-}
+void set_initial_values_to_exact_solution();
 
 /// Doc the solution
 void doc_solution(const std::string& comment="");
@@ -339,8 +251,6 @@ return dynamic_cast<TriangleMesh<ELEMENT>*> (Problem::mesh_pt());
 DocInfo Doc_info;
 
 private:
-
-
 /// Helper function to apply boundary conditions
 void apply_boundary_conditions();
 
@@ -360,29 +270,17 @@ enum
 
 double Element_area;
 
-// The extra members required for flux type boundary conditions.
-/// \short Number of "bulk" elements (We're attaching flux elements
-/// to bulk mesh --> only the first Nkirchhoff_elements elements in
-/// the mesh are bulk elements!)
-// unsigned Nkirchhoff_elements;
-
 /// \short Create bending moment elements on the b-th boundary of the
 /// problems mesh 
 void create_traction_elements(const unsigned &b, Mesh* const & bulk_mesh_py,
                             Mesh* const &surface_mesh_pt);
 
+/// Helper to upgrade the edge elements to curved Bernadou elements
 void upgrade_edge_elements_to_curve(const unsigned &b, Mesh* const & 
  bulk_mesh_pt);
 
+/// Helper to rotate the edge elements' Hermite dofs
 void rotate_edge_degrees_of_freedom(Mesh* const &bulk_mesh_pt);
-
-
-/// \short Delete traction elements and wipe the surface mesh
-void delete_traction_elements(Mesh* const &surface_mesh_pt);
-
-/// \short Set pointer to prescribed-flux function for all elements
-/// in the surface mesh
-void set_prescribed_traction_pt();
 
 /// Pointer to "bulk" mesh
 TriangleMesh<ELEMENT>* Bulk_mesh_pt;
@@ -477,6 +375,105 @@ delete outer_curvilinear_boundary_pt[1];
 }
 
 
+//==start_of_complete======================================================
+// Set the initial values to the exact solution (useful for debugging)
+//========================================================================
+template<class ELEMENT>
+void UnstructuredFvKProblem<ELEMENT>::set_initial_values_to_exact_solution()
+{
+// Loop over all elements and reset the values
+unsigned n_element = Bulk_mesh_pt->nelement();
+for(unsigned e=0;e<n_element;e++)
+{
+ // Upcast from GeneralisedElement to the present element
+ ELEMENT* el_pt = dynamic_cast<ELEMENT*>(Bulk_mesh_pt->element_pt(e));
+ // Get the numbers
+ const unsigned nnode = el_pt->nnode();
+ const unsigned ndof_type = el_pt->nnodal_position_type();
+ const unsigned ndisplacement = 3;
+ const unsigned dim = 2;
+ // Loop over nodes
+ for(unsigned i=0;i<nnode;++i)
+  {
+   // Containers
+   Vector<double> x(dim),w(ndisplacement*ndof_type,0.0);
+   // Get node pointer
+   Node* nod_pt = el_pt->node_pt(i);
+   // Get x 
+   x[0]=nod_pt->x(0);
+   x[1]=nod_pt->x(1);
+   // Get test
+   TestSoln::get_exact_w(x,w);
+   // Set value
+   for(unsigned k=0;k<ndisplacement;++k)
+    {
+    for(unsigned l=0 ; l<ndof_type;++l)
+     {
+      const unsigned index = el_pt->u_index_koiter_model(l,k);
+      nod_pt->set_value(index,w[ndof_type*k+l]);
+     }
+    }
+  }
+  // Pin the internal dofs
+  const unsigned n_internal_dofs = el_pt->number_of_internal_dofs();
+  for(unsigned i=0;i<n_internal_dofs;++i)
+   {
+   // Containers
+   Vector<double> x(dim,0.0), s(dim,0.0), w(ndisplacement*ndof_type,0.0);
+   // Get internal data
+   Data* internal_data_pt = el_pt->internal_data_pt(1);
+   el_pt->get_internal_dofs_location(i,s);
+   // Get test
+   el_pt->get_coordinate_x(s,x); 
+   TestSoln::get_exact_w_radial(x,w);
+   // HERE need a function that can give us this lookup
+   for(unsigned k=0; k<3; ++k)
+    {
+     // The bubble index
+     const unsigned index =i+k*n_internal_dofs;
+     internal_data_pt->set_value(index,w[ndof_type*k+0]);
+    }
+   }  
+
+  //Just loop over the boundary elements
+  unsigned nbound = Outer_boundary1 + 1;
+  for(unsigned b=0;b<nbound;b++)
+   {
+   const unsigned nb_element = Bulk_mesh_pt->nboundary_element(b);
+   for(unsigned e=0;e<nb_element;e++)
+    {
+     // Get pointer to bulk element adjacent to b
+     ELEMENT* el_pt = dynamic_cast<ELEMENT*>(
+      Bulk_mesh_pt->boundary_element_pt(b,e));
+     // Loop over vertices of the element (i={0,1,2} always!)
+     for(unsigned i=0;i<nnode;++i)
+      {
+       Node* nod_pt = el_pt->node_pt(i);
+       // If it is on the bth boundary
+       if(nod_pt -> is_on_boundary(b))
+        {
+         // Set the values of the unknowns that aren't pinned
+         Vector<double> x(dim,0.0),w(ndof_type*ndisplacement,0.0);
+         x[0] = nod_pt->x(0);
+         x[1] = nod_pt->x(1);
+         TestSoln::get_exact_w_radial(x,w);
+         // Just set the nonzero values -> the others are pinned
+         // Set value
+         for(unsigned k=0;k<ndisplacement;++k)
+          {
+          for(unsigned l=0 ; l<ndof_type;++l)
+           {
+            const unsigned index = el_pt->u_index_koiter_model(l,k);
+            nod_pt->set_value(index,w[ndof_type*k+l]);
+           }
+          }
+        }
+      }
+    }
+   }
+}// End loop over elements
+}
+
 
 //==start_of_complete======================================================
 /// Set boundary condition exactly, and complete the build of 
@@ -538,36 +535,7 @@ el_pt->d_pressure_dn_fct_pt() = &TestSoln::get_d_pressure_dn;
 el_pt->d_pressure_dr_fct_pt() = &TestSoln::get_d_pressure_dr;
 el_pt->d_pressure_d_grad_u_fct_pt() = &TestSoln::get_d_pressure_d_grad_u;
 el_pt->thickness_pt() = &TestSoln::h;
-// el_pt->eta_xy_pt() = &TestSoln::eta_xy;
-// el_pt->eta_z_pt() = &TestSoln::eta_z;
-
-//// For each node pin to the solution
-//unsigned num_nod=el_pt->nnode();
-//for (unsigned inod=0;inod<num_nod;inod++)
-// {
-// // Get nod
-// Node* nod_pt=el_pt->node_pt(inod);
-// Vector<double> x(2,0.0),w(18,0.0);
-// x[0]=nod_pt->x(0);
-// x[1]=nod_pt->x(1);
-// TestSoln::get_exact_w(x,w);
-//
-// // Pin unknown values (everything except for the second normal derivative)
-// for(unsigned i=0;i<3;++i)
-//  {
-//   for(unsigned l=0;l<6;++l)
-//    {
-//     unsigned index=el_pt->u_index_koiter_model(l,i);
-//     nod_pt->set_value(index,w[index]);
-//    }
-// }
-// }
 }
-
-// Loop over flux elements to pass pointer to prescribed traction function
-
-/// Set pointer to prescribed traction function for traction elements
-//set_prescribed_traction_pt();
 
 // Re-apply Dirichlet boundary conditions (projection ignores
 // boundary conditions!)
@@ -620,13 +588,6 @@ for (unsigned inod=0;inod<num_nod;inod++)
 } 
 
 } // end set bc
-
-template <class ELEMENT>
-void UnstructuredFvKProblem<ELEMENT>::
-create_traction_elements(const unsigned &b, Mesh* const &bulk_mesh_pt, 
-                             Mesh* const &surface_mesh_pt)
-{
-}// end create traction elements
 
 /// A function that upgrades straight sided elements to be curved. This involves
 // Setting up the parametric boundary, F(s) and the first derivative F'(s)
@@ -793,16 +754,7 @@ rotate_edge_degrees_of_freedom( Mesh* const &bulk_mesh_pt)
    // Now rotate the nodes
    }
  }
-}// end create traction elements
-
-//==start_of_set_prescribed_traction_pt===================================
-/// Set pointer to prescribed traction function for all elements in the 
-/// surface mesh
-//========================================================================
-template<class ELEMENT>
-void UnstructuredFvKProblem<ELEMENT>::set_prescribed_traction_pt()
-{
-}// end of set prescribed flux pt
+}// end
 
 //==start_of_doc_solution=================================================
 /// Doc the solution
@@ -893,40 +845,15 @@ sprintf(filename,"RESLT/L2-norm%i-%f.dat",
 some_file.open(filename);
 
 some_file<<"### L2 Norm\n";
-some_file<<"##  Format: err^2 norm^2 log(err/norm) \n";
+some_file<<"##  Format: err^2 norm^2\n";
 // Print error in prescribed format
-some_file<< dummy_error <<" "<< zero_norm <<" ";
-
-// Only divide by norm if its nonzero
-//some_file<<0.5*(log10(fabs(dummy_error))-log10(zero_norm))<<"\n";
+some_file<< dummy_error <<" "<< zero_norm;
 some_file.close();
 
 // Increment the doc_info number
 Doc_info.number()++;
 
 } // end of doc
-
-//============start_of_delete_flux_elements==============================
-/// Delete Poisson Flux Elements and wipe the surface mesh
-//=======================================================================
-template<class ELEMENT>
-void UnstructuredFvKProblem<ELEMENT>
-::delete_traction_elements(Mesh* const &surface_mesh_pt)
-{
-// How many surface elements are in the surface mesh
-unsigned n_element = surface_mesh_pt->nelement();
-
-// Loop over the surface elements
-for(unsigned e=0;e<n_element;e++)
-{
-// Kill surface element
-delete surface_mesh_pt->element_pt(e);
-}
-
-// Wipe the mesh
-surface_mesh_pt->flush_element_and_node_storage();
-
-} // end of delete_flux_elements
 
 
 //=======start_of_main========================================
@@ -943,15 +870,15 @@ int main(int argc, char **argv)
  // Define possible command line arguments and parse the ones that
  // were actually specified
 
- // Validation?
- CommandLineArgs::specify_command_line_flag("--validation");
+ // Validation
+ CommandLineArgs::specify_command_line_flag("--validate");
 
  // Directory for solution
  string output_dir="RSLT";
  CommandLineArgs::specify_command_line_flag("--dir", &output_dir);
 
  // Poisson Ratio
- //CommandLineArgs::specify_command_line_flag("--nu", &TestSoln::nu);
+ CommandLineArgs::specify_command_line_flag("--nu", &TestSoln::nu);
  
  // Applied Pressure
  CommandLineArgs::specify_command_line_flag("--p", &TestSoln::p_mag);
@@ -970,54 +897,64 @@ int main(int argc, char **argv)
  // Doc what has actually been specified on the command line
  CommandLineArgs::doc_specified_flags();
 
+ // If validate flag provided
+ const bool validate=CommandLineArgs::
+   command_line_flag_has_been_set("--validate");
+
  // Problem instance
  UnstructuredFvKProblem<LargeDisplacementPlateC1CurvedBellElement<2,2,5,KoiterSteigmannPlateEquations> >problem(element_area);
-
  // Change some tolerances
  problem.max_residuals()=1e10;
  problem.max_newton_iterations()=30;
- // Initial guess `nearby'
- TestSoln::h=0.1;
- TestSoln::radius_of_curvature=Pi/2.0001;
- problem.set_initial_values_to_exact_solution();
- TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
- problem.newton_solve();
 
- // Test Parameters 
- TestSoln::h=0.1;
- TestSoln::radius_of_curvature=Pi/2.0;
- TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
- problem.newton_solve();
- problem.doc_solution();
- // Short circuit
- exit(0);
+ if(validate)
+ {
+  // Initial guess `nearby'
+  TestSoln::h=0.1;
+  TestSoln::radius_of_curvature=Pi/2.0001;
+  problem.set_initial_values_to_exact_solution();
+  TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
+  problem.newton_solve();
+ 
+  // Test Parameters 
+  TestSoln::h=0.1;
+  TestSoln::radius_of_curvature=Pi/2.0;
+  TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
+  problem.newton_solve();
+  problem.doc_solution();
+  // Short circuit
+  exit(0);
+ }
 
  // Set to zero before initial solve
  TestSoln::radius_of_curvature=0.0;
- // Loop Curvatures
+ TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
+ // Loop Curvatures to get to desired curvature
  for(unsigned i=0;i<n_step;++i)
   {
   //Increment
   TestSoln::radius_of_curvature+=Pi/(n_step);
+  TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
   oomph_info<<"Solving for curvature=" << TestSoln::radius_of_curvature<<"\n";
+  // Try newton solve and dump if caught
   try {
-  problem.newton_solve();
+   problem.newton_solve();
   }
   catch(...)
    {
-  // Dump the data 
-  char filename[100];
-  std::ofstream filestream;
-  filestream.precision(15);
-  sprintf(filename,"%s/fvk_circle_data%i-%f.dump",
-          problem.Doc_info.directory().c_str(),
-          problem.Doc_info.number(),
-          TestSoln::p_mag
-         );
-  filestream.open(filename);
-  problem.dump(filestream);
-  filestream.close();
-  exit(0); 
+   // Dump the data 
+   char filename[100];
+   std::ofstream filestream;
+   filestream.precision(15);
+   sprintf(filename,"%s/fvk_circle_data%i-%f.dump",
+           problem.Doc_info.directory().c_str(),
+           problem.Doc_info.number(),
+           TestSoln::p_mag
+          );
+   filestream.open(filename);
+   problem.dump(filestream);
+   filestream.close();
+   exit(0); 
   }
   // Document
   problem.doc_solution();
@@ -1029,7 +966,9 @@ int main(int argc, char **argv)
   oomph_info << "Solution number (" <<problem.Doc_info.number()-1 << ")" << std::endl;
   oomph_info << "---------------------------------------------" << std::endl;
   oomph_info << std::endl;
-}
+  }
+
+ // Loop of thickness to arrive at desired thickness
  const unsigned n_h_step =10; 
  const double h_target = 0.1, h_initial = TestSoln::h;
  for(unsigned i=0;i<n_h_step;++i)
@@ -1038,23 +977,23 @@ int main(int argc, char **argv)
   TestSoln::h+=(h_target - h_initial)/(n_h_step);
   oomph_info<<"Solving for curvature=" << TestSoln::radius_of_curvature<<"\n";
   try {
-  problem.newton_solve();
+    problem.newton_solve();
   }
   catch(...)
    {
-  // Dump the data 
-  char filename[100];
-  std::ofstream filestream;
-  filestream.precision(15);
-  sprintf(filename,"%s/fvk_circle_data%i-%f.dump",
-          problem.Doc_info.directory().c_str(),
-          problem.Doc_info.number(),
-          TestSoln::p_mag
-         );
-  filestream.open(filename);
-  problem.dump(filestream);
-  filestream.close();
-  exit(0); 
+   // Dump the data 
+   char filename[100];
+   std::ofstream filestream;
+   filestream.precision(15);
+   sprintf(filename,"%s/fvk_circle_data%i-%f.dump",
+           problem.Doc_info.directory().c_str(),
+           problem.Doc_info.number(),
+           TestSoln::p_mag
+          );
+   filestream.open(filename);
+   problem.dump(filestream);
+   filestream.close();
+   exit(0); 
   }
   // Document
   problem.doc_solution();
@@ -1068,43 +1007,5 @@ int main(int argc, char **argv)
   oomph_info << "---------------------------------------------" << std::endl;
   oomph_info << std::endl;
 }
- // Debug Jacobian
-// problem.describe_dofs();
-// oomph_info << "----------PRINTING GLOBAL JACOBIAN-----------" << std::endl;
-// DoubleVector residuals;
-// CRDoubleMatrix jac;
-// DenseMatrix<double> jac_fd(problem.ndof(),problem.ndof(),0.0);
-// problem.get_jacobian(residuals,jac);
-// 
-// // Open filestream, high precision
-// std::ofstream filestream;
-// filestream.precision(15);
-// filestream.open("RESLT/Jacobian.csv");
-// 
-// // Output Jacobian in csv format
-// for (unsigned n=0; n<problem.ndof(); ++n)
-// {
-//   for(unsigned m=0; m<problem.ndof();++m)
-//     filestream<<jac(n,m)<<((m==problem.ndof()-1) ? "\n":",");
-//     // if we are at the end of a row output "\n" else ","
-// }
-// filestream.close();
-//
-// oomph_info << "----------PRINTING FD JACOBIAN-----------" << std::endl;
-// problem.get_fd_jacobian(residuals,jac_fd);
-//// oomph::BlackBoxFDNewtonSolver::FD_step=1e-9;
-// 
-// // Open filestream, high precision
-// filestream.precision(15);
-// filestream.open("RESLT/FD_Jacobian.csv");
-// // Output Jacobian in csv format
-// for (unsigned n=0; n<problem.ndof(); ++n)
-// {
-//   for(unsigned m=0; m<problem.ndof();++m)
-//     filestream<<jac_fd(n,m)<<((m==problem.ndof()-1) ? "\n":",");
-//     // if we are at the end of a row output "\n" else ","
-// }
-// filestream.close();
-
 } //End of main
 
