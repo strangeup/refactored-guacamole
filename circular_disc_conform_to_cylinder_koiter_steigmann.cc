@@ -61,24 +61,17 @@ CurvilineCircleTop parametric_curve_top;
 CurvilineCircleBottom parametric_curve_bottom;
 
 // Assigns the value of pressure depending on the position (x,y)
-void get_pressure(const Vector<double>& xi,const Vector<double>& ui,
- const DenseMatrix<double>& dui_dxj,  const Vector<double>& ni, 
+inline void get_pressure(const Vector<double>& xi,const Vector<double>& ui,
+ const DenseMatrix<double>& d_ui_dx_j,  const Vector<double>& ni, 
  Vector<double>& pressure)
 {
- // We are distributin the pressure over the deformed surface
- // so the area element will be dA = \sqrt(det(g)) da with da the area element on
- // the undeformed sheet. So a 'following' pressure will be p n_i dA
- // or \sqrt(g) n_i da = r,x * r,y p da  with  * the cross product
- Vector<double> non_unit_ni(3);
- non_unit_ni[0] = (dui_dxj(1,0))*dui_dxj(2,1) - dui_dxj(2,0)*(1.0+dui_dxj(1,1));
- non_unit_ni[1] =-(1.0+dui_dxj(0,0))*dui_dxj(2,1) + dui_dxj(2,0)*(dui_dxj(0,1));
- non_unit_ni[2] = (1.0+dui_dxj(0,0))*(1.0+dui_dxj(1,1)) - dui_dxj(0,1)*(dui_dxj(1,0));
-  
- for(unsigned i=0; i<3;++i)
-  {
-   // N.B Non dimensional  p = p* L / E h where p* is dimensional
-   pressure[i] = /*h**/p_mag*non_unit_ni[i]; 
-  }
+ // Create the matrix of tangents
+ DenseMatrix<double> g = d_ui_dx_j;
+ g(0,0) += 1.0;
+ g(1,1) += 1.0;
+ pressure[0] =p_mag*(-(g(1,1)*g(2,0)) + g(1,0)*g(2,1));
+ pressure[1] =p_mag*(  g(0,1)*g(2,0)  - g(0,0)*g(2,1));
+ pressure[2] =p_mag*(-(g(0,1)*g(1,0)) + g(0,0)*g(1,1));
 }
 
 // Assigns the value of pressure depending on the position (x,y)
@@ -98,52 +91,29 @@ void get_d_pressure_dr(const Vector<double>& xi,const Vector<double>& ui,
 
 // Assigns the value of pressure depending on the position (x,y)
 inline void get_d_pressure_d_grad_u(const Vector<double>& xi,const Vector<double>& ui,
- const DenseMatrix<double>& dui_dxj,
+ const DenseMatrix<double>& d_ui_dx_j,
  const Vector<double>& ni, RankThreeTensor<double>& d_pressure_du_grad)
 {
-// RankThreeTensor<double> d_non_unit_ni_d_u_grad(3,3,2,0.0);
-// d_non_unit_ni_d_u_grad(0,1,0) = dui_dxj(2,1);
-// d_non_unit_ni_d_u_grad(0,2,1) = dui_dxj(1,0);
-// d_non_unit_ni_d_u_grad(0,2,0) =-(1.0+dui_dxj(1,1));
-// d_non_unit_ni_d_u_grad(0,1,1) =-dui_dxj(2,0);
-//
-// d_non_unit_ni_d_u_grad(1,0,0) =-dui_dxj(2,1);
-// d_non_unit_ni_d_u_grad(1,2,1) =-(1.0+dui_dxj(0,0));
-// d_non_unit_ni_d_u_grad(1,2,0) = dui_dxj(0,1);
-// d_non_unit_ni_d_u_grad(1,0,1) = dui_dxj(2,0);
-//
-// d_non_unit_ni_d_u_grad(2,0,0) = (1.0+dui_dxj(1,1));
-// d_non_unit_ni_d_u_grad(2,1,1) = (1.0+dui_dxj(0,0));
-// d_non_unit_ni_d_u_grad(2,0,1) =-dui_dxj(1,0);
-// d_non_unit_ni_d_u_grad(2,1,0) = dui_dxj(1,0);
-//
-// for(unsigned i=0; i<3;++i)
-//  {
-//  for(unsigned j=0; j<3;++j)
-//   {
-//   for(unsigned alpha=0; alpha<3;++alpha)
-//    {
-//    d_pressure_du_grad(i,j,alpha) = /*h**/p_mag *
-//             d_non_unit_ni_d_u_grad(i,j,alpha); 
-//    }
-//   }
-//  }
+ // Create the matrix of tangents
+ DenseMatrix<double> g = d_ui_dx_j;
+ g(0,0) += 1.0;
+ g(1,1) += 1.0;
 
-  // This way doesn't need an intermediate variable
-  d_pressure_du_grad(0,1,0) = p_mag*dui_dxj(2,1);
-  d_pressure_du_grad(0,2,1) = p_mag*dui_dxj(1,0);
-  d_pressure_du_grad(0,2,0) =-p_mag*(1.0+dui_dxj(1,1));
-  d_pressure_du_grad(0,1,1) =-p_mag*dui_dxj(2,0);
+ // Fill in the pressure components 
+ d_pressure_du_grad(0,1,1) =p_mag*(-g(2,0));
+ d_pressure_du_grad(0,2,0) =p_mag*(-g(1,1));
+ d_pressure_du_grad(0,1,0) =p_mag*( g(2,1));
+ d_pressure_du_grad(0,2,1) =p_mag*( g(1,0));
 
-  d_pressure_du_grad(1,0,0) =-p_mag*dui_dxj(2,1);
-  d_pressure_du_grad(1,2,1) =-p_mag*(1.0+dui_dxj(0,0));
-  d_pressure_du_grad(1,2,0) = p_mag*dui_dxj(0,1);
-  d_pressure_du_grad(1,0,1) = p_mag*dui_dxj(2,0);
+ d_pressure_du_grad(1,0,1) =p_mag*(  g(2,0));
+ d_pressure_du_grad(1,2,0) =p_mag*(  g(0,1));
+ d_pressure_du_grad(1,0,0) =p_mag*(- g(2,1));
+ d_pressure_du_grad(1,2,1) =p_mag*(- g(0,0));
 
-  d_pressure_du_grad(2,0,0) = p_mag*(1.0+dui_dxj(1,1));
-  d_pressure_du_grad(2,1,1) = p_mag*(1.0+dui_dxj(0,0));
-  d_pressure_du_grad(2,0,1) =-p_mag*dui_dxj(1,0);
-  d_pressure_du_grad(2,1,0) =-p_mag*dui_dxj(0,1);
+ d_pressure_du_grad(2,0,1) =p_mag*(-g(1,0));
+ d_pressure_du_grad(2,1,0) =p_mag*(-g(0,1));
+ d_pressure_du_grad(2,0,0) =p_mag*( g(1,1));
+ d_pressure_du_grad(2,1,1) =p_mag*( g(0,0));
 }
 
 // The normal and tangential directions.
@@ -261,6 +231,97 @@ void actions_after_newton_solve()
 void actions_before_newton_solve()
 {
 apply_boundary_conditions();
+}
+
+/// Set the initial values to the exact solution (useful for debugging)
+void set_initial_values_to_exact_solution()
+{
+// Loop over all elements and reset the values
+unsigned n_element = Bulk_mesh_pt->nelement();
+for(unsigned e=0;e<n_element;e++)
+{
+ // Upcast from GeneralisedElement to the present element
+ ELEMENT* el_pt = dynamic_cast<ELEMENT*>(Bulk_mesh_pt->element_pt(e));
+ unsigned nnode = el_pt->nnode();
+ for(unsigned i=0;i<3;++i)
+  {
+   // Containers
+   Vector<double> x(2),w(18,0.0);
+   // Get node pointer
+   Node* nod_pt = el_pt->node_pt(i);
+   // Get x 
+   x[0]=nod_pt->x(0);
+   x[1]=nod_pt->x(1);
+   // Get test
+   TestSoln::get_exact_w(x,w);
+   // Set value
+   for(unsigned k=0;k<3;++k)
+    {
+    for(unsigned l=0 ; l<6;++l)
+     {
+      const unsigned index = el_pt->u_index_koiter_model(l,k);
+      nod_pt->set_value(index,w[6*k+l]);
+     }
+    }
+  }
+  // Pin the internal dofs
+  const unsigned n_internal_dofs = el_pt->number_of_internal_dofs();
+  for(unsigned i=0;i<n_internal_dofs;++i)
+   {
+   // Containers
+   Vector<double> x(2,0.0), s(2,0.0), w(18,0.0);
+   // Get internal data
+   Data* internal_data_pt = el_pt->internal_data_pt(1);
+   el_pt->get_internal_dofs_location(i,s);
+   // Get test
+   el_pt->get_coordinate_x(s,x); 
+   TestSoln::get_exact_w_radial(x,w);
+   // HERE need a function that can give us this lookup
+   for(unsigned k=0; k<3; ++k)
+    {
+     // The bubble index
+     const unsigned index =i+k*n_internal_dofs;
+     internal_data_pt->set_value(index,w[6*k+0]);
+    }
+   }  
+
+  //Just loop over the boundary elements
+  unsigned nbound = Outer_boundary1 + 1;
+  for(unsigned b=0;b<nbound;b++)
+   {
+   const unsigned nb_element = Bulk_mesh_pt->nboundary_element(b);
+   for(unsigned e=0;e<nb_element;e++)
+    {
+     // Get pointer to bulk element adjacent to b
+     ELEMENT* el_pt = dynamic_cast<ELEMENT*>(
+      Bulk_mesh_pt->boundary_element_pt(b,e));
+     // Loop over vertices of the element (i={0,1,2} always!)
+     for(unsigned i=0;i<3;++i)
+      {
+       Node* nod_pt = el_pt->node_pt(i);
+       // If it is on the bth boundary
+       if(nod_pt -> is_on_boundary(b))
+        {
+         // Set the values of the unknowns that aren't pinned
+         Vector<double> x(2,0.0),w(18,0.0);
+         x[0] = nod_pt->x(0);
+         x[1] = nod_pt->x(1);
+         TestSoln::get_exact_w_radial(x,w);
+         // Just set the nonzero values -> the others are pinned
+         // Set value
+         for(unsigned k=0;k<3;++k)
+          {
+          for(unsigned l=0 ; l<6;++l)
+           {
+            const unsigned index = el_pt->u_index_koiter_model(l,k);
+            nod_pt->set_value(index,w[6*k+l]);
+           }
+          }
+        }
+      }
+    }
+   }
+}// End loop over elements
 }
 
 /// Doc the solution
@@ -819,8 +880,8 @@ for (unsigned r = 0; r < n_region; r++)
  some_file.close();
  
  // Doc L2 error and norm of solution
- oomph_info << "Error of computed solution: " << /*sqrt*/(dummy_error)<< std::endl;
- oomph_info << "Norm of computed solution: "  << /*sqrt*/(zero_norm)  << std::endl;
+ oomph_info << "Error of computed solution: " << sqrt(dummy_error)<< std::endl;
+ oomph_info << "Norm of computed solution: "  << sqrt(zero_norm)  << std::endl;
  
  Trace_file << TestSoln::p_mag << " " << "\n ";
 
@@ -915,10 +976,21 @@ int main(int argc, char **argv)
  // Change some tolerances
  problem.max_residuals()=1e10;
  problem.max_newton_iterations()=30;
- // Do a quick solve for initial guess
- TestSoln::radius_of_curvature=0.0001;
+ // Initial guess `nearby'
+ TestSoln::h=0.1;
+ TestSoln::radius_of_curvature=Pi/2.0001;
+ problem.set_initial_values_to_exact_solution();
+ TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
+ problem.newton_solve();
+
+ // Test Parameters 
+ TestSoln::h=0.1;
+ TestSoln::radius_of_curvature=Pi/2.0;
+ TestSoln::p_mag=pow(TestSoln::radius_of_curvature,3)*pow(TestSoln::h,2)/(12.*(1-pow(TestSoln::nu,2)));
  problem.newton_solve();
  problem.doc_solution();
+ // Short circuit
+ exit(0);
 
  // Set to zero before initial solve
  TestSoln::radius_of_curvature=0.0;
