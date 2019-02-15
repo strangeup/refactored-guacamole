@@ -5,7 +5,7 @@ OOMPH_ROOT_DIR=$(make -s --no-print-directory print-top_builddir)
 
 
 #Set the number of tests to be checked
-NUM_TESTS=1
+NUM_TESTS=2
 
 
 # Setup validation directory
@@ -23,7 +23,7 @@ mkdir RESLT
 ../circular_disc_to_cylinder_ks --validate > OUTPUT_circular_disc
 echo "done"
 echo " " >> validation.log
-echo "Circular disc Koiter Steigmann validation" >> validation.log
+echo "Circular disc Koiter Steigmann validation 1" >> validation.log
 echo "------------------------------------------" >> validation.log
 echo " " >> validation.log
 echo "Validation directory: " >> validation.log
@@ -37,6 +37,26 @@ if test "$1" = "no_fpdiff"; then
 else
   ../../../bin/fpdiff.py ../validata/circular_disc_ks.dat.gz   \
   circular_disc_results.dat  >> validation.log
+fi
+
+echo "Running circular disc Koiter Steigmann validation "
+../circular_disc_rotate_ks > OUTPUT_circular_disc_rotate
+echo "done"
+echo " " >> validation.log
+echo "Circular disc Koiter Steigmann validation 2" >> validation.log
+echo "------------------------------------------" >> validation.log
+echo " " >> validation.log
+echo "Validation directory: " >> validation.log
+echo " " >> validation.log
+echo "  " `pwd` >> validation.log
+echo " " >> validation.log
+cat RESLT/trace.dat > circular_disc_rotate_results.dat
+
+if test "$1" = "no_fpdiff"; then
+  echo "dummy [OK] -- Can't run fpdiff.py because we don't have python or validata" >> validation.log
+else
+  ../../../bin/fpdiff.py ../validata/circular_disc_rotate_ks.dat.gz   \
+  circular_disc_rotate_results.dat  >> validation.log
 fi
 
 
