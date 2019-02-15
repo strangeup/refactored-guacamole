@@ -901,8 +901,28 @@ for (unsigned r = 0; r < n_region; r++)
  // Doc L2 error and norm of solution
  oomph_info << "Error of computed solution: " << sqrt(dummy_error)<< std::endl;
  oomph_info << "Norm of computed solution: "  << sqrt(zero_norm)  << std::endl;
+
+ // Find the solution at r=0
+ //   // ----------------------
+ // Interestingly the number of bins is miscalculated for element_area = 1
+ // whcih causes a segfault
+ // Discuss?
+ MeshAsGeomObject* Mesh_as_geom_obj_pt=
+  new MeshAsGeomObject(Bulk_mesh_pt);
+ Vector<double> s(2);
+ GeomObject* geom_obj_pt=0;
+ Vector<double> r(2,0.0);
+ r[0]=0.5;
+ Mesh_as_geom_obj_pt->locate_zeta(r,geom_obj_pt,s);
+ // Call the interpolated_u function
+ Vector<Vector<double> > u_i(3,Vector<double>(6,0.0));
+ dynamic_cast<ELEMENT*>(geom_obj_pt)->interpolated_u_koiter_plate(s,u_i);
+
+ oomph_info << "r at (0.5,0.0): "  
+            <<"("<< 0.5+u_i[0][0] <<","<<0.0+u_i[1][0]<<","<<u_i[2][0]<<")"<< std::endl;
  
- Trace_file << TestSoln::p_mag << " " << "\n ";
+ Trace_file << TestSoln::p_mag << " " << TestSoln::radius_of_curvature
+            <<" "<< u_i[0][0] <<" "<<u_i[1][0]<<" "<<u_i[2][0]<< std::endl;
 
 // Doc error and return of the square of the L2 error
 //---------------------------------------------------
@@ -920,6 +940,8 @@ some_file.close();
 // Increment the doc_info number
 Doc_info.number()++;
 
+// Clean up
+delete Mesh_as_geom_obj_pt;
 } // end of doc
 
 
