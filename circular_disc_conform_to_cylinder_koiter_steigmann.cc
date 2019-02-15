@@ -51,15 +51,45 @@ double nu = 0.3;
 double h = 0.01;
 double eta_u = 1;
 double eta_sigma = 1;
+double eta_bending = h;
 double radius_of_curvature = Pi; 
 double p_mag=pow(radius_of_curvature,3)*pow(h,2)/(12.*(1-pow(nu,2)));
+
+/// Different nondimensionalisations
+enum Nondimensional_form {none = 0 , oomph = 1 /*, thickness_scaled= 2*/ };
+Nondimensional_form nondimensional_form = none;
 
 /// Update the problem_parameters
 void update_problem_parameters()
  {
-  eta_u = 1;
-  eta_sigma = 1;
-  p_mag=pow(radius_of_curvature,3)*pow(h,2)/(12.*(1-pow(nu,2)));
+  switch(nondimensional_form)
+  {
+  case none:
+  default:
+   // The default nondim
+   eta_u = 1;
+   eta_sigma = 1;
+   eta_bending = h;
+   p_mag=pow(radius_of_curvature,3)*pow(h,2)/(12.*(1-pow(nu,2)));
+  break;
+  case oomph:
+   // The FvK nondim
+   eta_u = 1;
+   eta_sigma = 12*(1-nu*nu)/(h*h);
+   eta_bending = sqrt(12*(1-nu*nu));
+   p_mag=pow(radius_of_curvature,3);
+  break;
+/*  
+   // Test case for thickness scaling (DISABLED)
+   case thickness_scaled:
+   // The h-scaled nondim
+   eta_u = h;
+   eta_sigma = 1;
+    eta_bending = h;
+   p_mag=pow(radius_of_curvature,3)*pow(h,1)/(12.*(1-pow(nu,2)));
+  break;
+*/
+  }
  }
 
 /*                     PARAMETRIC BOUNDARY DEFINITIONS                        */
@@ -74,8 +104,16 @@ inline void get_pressure(const Vector<double>& xi,const Vector<double>& ui,
 {
  // Create the matrix of tangents
  DenseMatrix<double> g = d_ui_dx_j;
+ // Rescale the displacements
+ for(unsigned i=0;i<2;++i)
+   {
+   for(unsigned j=0;j<2;++j)
+     {g(i,j) *=  eta_u;}
+   }
+
  g(0,0) += 1.0;
  g(1,1) += 1.0;
+ 
  pressure[0] =p_mag*(-(g(1,1)*g(2,0)) + g(1,0)*g(2,1));
  pressure[1] =p_mag*(  g(0,1)*g(2,0)  - g(0,0)*g(2,1));
  pressure[2] =p_mag*(-(g(0,1)*g(1,0)) + g(0,0)*g(1,1));
@@ -103,6 +141,12 @@ inline void get_d_pressure_d_grad_u(const Vector<double>& xi,const Vector<double
 {
  // Create the matrix of tangents
  DenseMatrix<double> g = d_ui_dx_j;
+ // Rescale the displacements
+ for(unsigned i=0;i<2;++i)
+   {
+   for(unsigned j=0;j<2;++j)
+     {g(i,j) *=  eta_u;}
+   }
  g(0,0) += 1.0;
  g(1,1) += 1.0;
 
@@ -172,6 +216,9 @@ void get_exact_w(const Vector<double>& xi, Vector<double>& w)
  w[15] =-cos(radius_of_curvature*x)*radius_of_curvature;
  w[16] = 0.0;
  w[17] = 0.0;
+ // Rescale analytic solution so it's in eta scaled non dim
+ for(unsigned i=0;i<18;++i)
+  { w[i] /= eta_u; }
 }
 
 //Exact solution for constant pressure, circular domain and resting boundary conditions
@@ -199,8 +246,14 @@ w[14] = +(sin(K*x))*y;
 w[15] = -(K*cos(K*x))*x*x/r2;
 w[16] =  (K*cos(K*x))*x*y/r + (sin(K*x))*y/r;
 w[17] = -(K*cos(K*x))*y*y + (sin(K*x))*x ;
+
+ // Rescale analytic solution so it's in eta scaled non dim
+ for(unsigned i=0;i<18;++i)
+  { w[i] /= eta_u; }
 }
 
+// Bool for high resolution
+bool High_resolution = false;
 }
 
 ///////////////////////////////////////////////////////////
@@ -541,7 +594,11 @@ el_pt->nu_pt() = &TestSoln::nu;
 el_pt->d_pressure_dn_fct_pt() = &TestSoln::get_d_pressure_dn;
 el_pt->d_pressure_dr_fct_pt() = &TestSoln::get_d_pressure_dr;
 el_pt->d_pressure_d_grad_u_fct_pt() = &TestSoln::get_d_pressure_d_grad_u;
-el_pt->thickness_pt() = &TestSoln::h;
+el_pt->thickness_pt() = &TestSoln::eta_bending;
+el_pt->eta_sigma_pt() = &TestSoln::eta_sigma;
+//// Test case for thickness scaling (DISABLED)
+// el_pt->eta_u_pt() = &TestSoln::eta_u;
+// el_pt->enable_finite_difference_jacobian();
 }
 
 // Re-apply Dirichlet boundary conditions (projection ignores
@@ -784,7 +841,10 @@ some_file << "TEXT X = 22, Y = 92, CS=FRAME T = \""
 some_file.close();
 
 // Number of plot points
-npts = 6;
+if (TestSoln::High_resolution)
+ {npts = 50;}
+else
+ {npts = 6;}
 
 sprintf(filename,"RESLT/soln%i-%f.dat",Doc_info.number(),Element_area);
 some_file.open(filename);
@@ -880,6 +940,9 @@ int main(int argc, char **argv)
  // Validation
  CommandLineArgs::specify_command_line_flag("--validate");
 
+ // High resolution solutions
+ CommandLineArgs::specify_command_line_flag("--high_resolution");
+
  // Directory for solution
  string output_dir="RSLT";
  CommandLineArgs::specify_command_line_flag("--dir", &output_dir);
@@ -903,10 +966,15 @@ int main(int argc, char **argv)
 
  // Doc what has actually been specified on the command line
  CommandLineArgs::doc_specified_flags();
+ TestSoln::update_problem_parameters();
 
  // If validate flag provided
  const bool validate=CommandLineArgs::
    command_line_flag_has_been_set("--validate");
+
+ // Set the flag 
+ TestSoln::High_resolution=CommandLineArgs::
+   command_line_flag_has_been_set("--high_resolution");
 
  // Problem instance
  UnstructuredFvKProblem<LargeDisplacementPlateC1CurvedBellElement<2,2,5,KoiterSteigmannPlateEquations> >problem(element_area);
@@ -917,15 +985,17 @@ int main(int argc, char **argv)
  if(validate)
  {
   // Initial guess `nearby'
-  TestSoln::h=0.1;
-  TestSoln::radius_of_curvature=Pi/2.0001;
+  TestSoln::h=2.0e-2;
+  TestSoln::radius_of_curvature=Pi/1.0001;
   TestSoln::update_problem_parameters();
   problem.set_initial_values_to_exact_solution();
   problem.newton_solve();
+  /* Don't doc this is an intermediate step */
+  // problem.doc_solution();
  
   // Test Parameters 
-  TestSoln::h=0.1;
-  TestSoln::radius_of_curvature=Pi/2.0;
+  TestSoln::h=2.0e-2;
+  TestSoln::radius_of_curvature=Pi/1.0;
   TestSoln::update_problem_parameters();
   problem.newton_solve();
   problem.doc_solution();
