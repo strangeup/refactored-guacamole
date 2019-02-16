@@ -89,7 +89,8 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 noinst_PROGRAMS = circular_disc_to_cylinder_ks$(EXEEXT) \
-	circular_disc_rotate_ks$(EXEEXT)
+	circular_disc_rotate_ks$(EXEEXT) \
+	circular_disc_to_sphere_ks$(EXEEXT)
 subdir = user_drivers/refactored-guacamole
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/config/configure.ac_scripts/automake_init_command_file \
@@ -119,6 +120,11 @@ am_circular_disc_to_cylinder_ks_OBJECTS =  \
 circular_disc_to_cylinder_ks_OBJECTS =  \
 	$(am_circular_disc_to_cylinder_ks_OBJECTS)
 circular_disc_to_cylinder_ks_DEPENDENCIES = $(am__DEPENDENCIES_1) \
+	$(am__DEPENDENCIES_1)
+am_circular_disc_to_sphere_ks_OBJECTS = circular_disc_conform_to_full_sphere_koiter_steigmann.$(OBJEXT)
+circular_disc_to_sphere_ks_OBJECTS =  \
+	$(am_circular_disc_to_sphere_ks_OBJECTS)
+circular_disc_to_sphere_ks_DEPENDENCIES = $(am__DEPENDENCIES_1) \
 	$(am__DEPENDENCIES_1)
 AM_V_P = $(am__v_P_@AM_V@)
 am__v_P_ = $(am__v_P_@AM_DEFAULT_V@)
@@ -154,9 +160,11 @@ am__v_CXXLD_ = $(am__v_CXXLD_@AM_DEFAULT_V@)
 am__v_CXXLD_0 = @echo "  CXXLD   " $@;
 am__v_CXXLD_1 = 
 SOURCES = $(circular_disc_rotate_ks_SOURCES) \
-	$(circular_disc_to_cylinder_ks_SOURCES)
+	$(circular_disc_to_cylinder_ks_SOURCES) \
+	$(circular_disc_to_sphere_ks_SOURCES)
 DIST_SOURCES = $(circular_disc_rotate_ks_SOURCES) \
-	$(circular_disc_to_cylinder_ks_SOURCES)
+	$(circular_disc_to_cylinder_ks_SOURCES) \
+	$(circular_disc_to_sphere_ks_SOURCES)
 am__can_run_installinfo = \
   case $$AM_UPDATE_INFO_DIR in \
     n|no|NO) false;; \
@@ -412,12 +420,18 @@ circular_disc_conform_to_cylinder_koiter_steigmann.cc
 circular_disc_rotate_ks_SOURCES = \
 circular_disc_rotation_koiter_steigmann.cc
 
+circular_disc_to_sphere_ks_SOURCES = \
+circular_disc_conform_to_full_sphere_koiter_steigmann.cc
+
 
 #---------------------------------------------------------------------------
 circular_disc_to_cylinder_ks_LDADD = -L@libdir@ -lC1_large_displacement_plate_models \
  -lC1_basis -lgeneric $(EXTERNAL_LIBS) $(FLIBS)
 
 circular_disc_rotate_ks_LDADD = -L@libdir@ -lC1_large_displacement_plate_models \
+ -lC1_basis -lgeneric $(EXTERNAL_LIBS) $(FLIBS)
+
+circular_disc_to_sphere_ks_LDADD = -L@libdir@ -lC1_large_displacement_plate_models \
  -lC1_basis -lgeneric $(EXTERNAL_LIBS) $(FLIBS)
 
 all: all-am
@@ -472,6 +486,10 @@ circular_disc_to_cylinder_ks$(EXEEXT): $(circular_disc_to_cylinder_ks_OBJECTS) $
 	@rm -f circular_disc_to_cylinder_ks$(EXEEXT)
 	$(AM_V_CXXLD)$(CXXLINK) $(circular_disc_to_cylinder_ks_OBJECTS) $(circular_disc_to_cylinder_ks_LDADD) $(LIBS)
 
+circular_disc_to_sphere_ks$(EXEEXT): $(circular_disc_to_sphere_ks_OBJECTS) $(circular_disc_to_sphere_ks_DEPENDENCIES) $(EXTRA_circular_disc_to_sphere_ks_DEPENDENCIES) 
+	@rm -f circular_disc_to_sphere_ks$(EXEEXT)
+	$(AM_V_CXXLD)$(CXXLINK) $(circular_disc_to_sphere_ks_OBJECTS) $(circular_disc_to_sphere_ks_LDADD) $(LIBS)
+
 mostlyclean-compile:
 	-rm -f *.$(OBJEXT)
 
@@ -479,6 +497,7 @@ distclean-compile:
 	-rm -f *.tab.c
 
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/circular_disc_conform_to_cylinder_koiter_steigmann.Po@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/circular_disc_conform_to_full_sphere_koiter_steigmann.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/circular_disc_rotation_koiter_steigmann.Po@am__quote@
 
 .cc.o:
