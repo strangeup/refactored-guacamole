@@ -30,7 +30,9 @@
 #include <fenv.h> 
 //Generic routines
 #include "generic.h" 
+#ifdef OOMPH_HAS_BOOST
 #include <boost/math/special_functions/ellint_2.hpp>
+#endif
 
 // The equations
 #include "C1_large_displacement_plate_models.h"
@@ -119,11 +121,15 @@ inline void get_foppl_correction_pressure(const Vector<double>& xi,const Vector<
 
  pressure[1] = 0.0;
 
+ // No Christoffel term
  pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-4 - 11*Sqrt(Chi) + 18*Chi 
   + 2*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))
   *(13 - Sqrt(Chi) - 13*Chi + Power(Chi,1.5) - 2*Power(Chi,2) + 6*Power(Chi,3))
   *Power(h,2)*Power(Cos(x),2) + (5 - 7*Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))
   /(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+ 
+ // With Christoffel term
+ pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-12 - 3*Sqrt(Chi) + 26*Chi - 6*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))*(11 + Sqrt(Chi) - 11*Chi - Power(Chi,1.5) - 4*Power(Chi,2) + 6*Power(Chi,3))*Power(h,2)*Power(Cos(x),2) + (4 - 5*Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))/(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
  }
 
  void pressure(const Vector<double>& xi, Vector<double>& pressure)
@@ -191,7 +197,18 @@ void get_exact_w(const Vector<double>& xi, Vector<double>& w)
  double (*Sin)(double theta);
  double (*Cos)(double theta);
  double (*Sqrt)(double theta);
+ EllipticE = 0;
+ #ifdef OOMPH_HAS_BOOST
  EllipticE = boost::math::ellint_2;
+ #endif
+ if(EllipticE == 0)
+  {  throw OomphLibError(
+     "This analytic solution requires the special function ellint_2 defined in\
+ boost::math. Please install boost to use this driver.",
+     "TestSoln::get_exact_w(...)",
+     OOMPH_EXCEPTION_LOCATION);
+  }
+ 
  Power = & std::pow;
  Sin = & std::sin;
  Cos = & std::cos;
