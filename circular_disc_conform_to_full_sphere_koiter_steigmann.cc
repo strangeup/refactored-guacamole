@@ -55,9 +55,19 @@ double eta_bending = h;
 double Radius_of_curvature = 10;
 double p_mag = 0.; 
 
-/// Different nondimensionalisations
-enum Nondimensional_form {none = 0 , oomph = 1 /*, thickness_scaled= 2*/ };
-Nondimensional_form nondimensional_form = none;
+/// Helper function to update parameters that could potentially depend on nu and
+// h
+void update_problem_parameters()
+ {
+  eta_u = 1;
+  eta_sigma =1;
+  eta_bending = h;
+ }
+
+// Use a Mathematica friendly alias for std::pow
+template<typename T1, typename T2>
+double Power(const T1& arg, const T2& exp)
+{ return std::pow(arg,exp); }
 
 /*                     PARAMETRIC BOUNDARY DEFINITIONS                        */
 // Here we create the geom objects for the Parametric Boundary Definition 
@@ -71,10 +81,8 @@ inline void get_pressure(const Vector<double>& xi,const Vector<double>& ui,
 {
  const double x=xi[0],y=xi[1], A=Radius_of_curvature;
  // Create aliases
- double (*Power)(double base, int exponent);
  double (*Sin)(double theta);
  double (*Cos)(double theta);
- Power = & std::pow;
  Sin = & std::sin;
  Cos = & std::cos;
 
@@ -211,7 +219,8 @@ void actions_after_newton_solve()
 /// Empty as the boundary conditions stay fixed
 void actions_before_newton_solve()
 {
-apply_boundary_conditions();
+ TestSoln::update_problem_parameters();
+ complete_problem_setup();
 }
 
 /// Set the initial values to the exact solution (useful for debugging)
