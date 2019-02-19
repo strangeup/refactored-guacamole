@@ -1,7 +1,7 @@
 # Name of executables: The prefix "noinst" means the executables don't
 # have to be installed anywhere.
 noinst_PROGRAMS =  circular_disc_to_cylinder_ks circular_disc_rotate_ks \
-circular_disc_to_sphere_ks 
+circular_disc_to_sphere_ks circular_disc_manufactured 
 include $(top_srcdir)/config/makefile_templates/demo_drivers
 #---------------------------------------------------------------------------
 
@@ -15,6 +15,8 @@ circular_disc_rotation_koiter_steigmann.cc
 circular_disc_to_sphere_ks_SOURCES = \
 circular_disc_conform_to_full_sphere_koiter_steigmann.cc
 
+circular_disc_manufactured_SOURCES = \
+circular_disc_manufactured_solution.cc
 #---------------------------------------------------------------------------
 
 circular_disc_to_cylinder_ks_LDADD = -L@libdir@ -lC1_large_displacement_plate_models \
@@ -24,6 +26,9 @@ circular_disc_rotate_ks_LDADD = -L@libdir@ -lC1_large_displacement_plate_models 
  -lC1_basis -lgeneric $(EXTERNAL_LIBS) $(FLIBS)
 
 circular_disc_to_sphere_ks_LDADD = -L@libdir@ -lC1_large_displacement_plate_models \
+ -lC1_basis -lgeneric $(EXTERNAL_LIBS) $(FLIBS)
+
+circular_disc_manufactured_LDADD = -L@libdir@ -lC1_large_displacement_plate_models \
  -lC1_basis -lgeneric $(EXTERNAL_LIBS) $(FLIBS)
 
 # Local sources that Jack's own code depends on: This code also uses
