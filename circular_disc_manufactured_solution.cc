@@ -122,14 +122,20 @@ inline void get_foppl_correction_pressure(const Vector<double>& xi,const Vector<
  pressure[1] = 0.0;
 
  // No Christoffel term
+ /*
  pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-4 - 11*Sqrt(Chi) + 18*Chi 
   + 2*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))
   *(13 - Sqrt(Chi) - 13*Chi + Power(Chi,1.5) - 2*Power(Chi,2) + 6*Power(Chi,3))
   *Power(h,2)*Power(Cos(x),2) + (5 - 7*Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))
   /(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+ */
  
  // With Christoffel term
- pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-12 - 3*Sqrt(Chi) + 26*Chi - 6*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))*(11 + Sqrt(Chi) - 11*Chi - Power(Chi,1.5) - 4*Power(Chi,2) + 6*Power(Chi,3))*Power(h,2)*Power(Cos(x),2) + (4 - 5*Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))/(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+ pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-12 - 3*Sqrt(Chi) + 26*Chi 
+  - 6*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))
+  *(11 + Sqrt(Chi) - 11*Chi - Power(Chi,1.5) - 4*Power(Chi,2) + 6*Power(Chi,3))
+  *Power(h,2)*Power(Cos(x),2) + (4 - 5*Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))
+  /(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
  }
 
  void pressure(const Vector<double>& xi, Vector<double>& pressure)
