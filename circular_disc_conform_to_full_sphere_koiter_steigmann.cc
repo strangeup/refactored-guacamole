@@ -48,12 +48,11 @@ double A = 1.0;
 double B = 1.0;
 // The coupling of the stretching energy
 double nu = 0.3;
-double h = 0.01;
+double h = 0.2;
 double eta_u = 1;
 double eta_sigma = 1;
 double eta_bending = h;
 double Radius_of_curvature = 10;
-double p_mag = 0.; 
 
 /// Helper function to update parameters that could potentially depend on nu and
 // h
@@ -851,7 +850,7 @@ for (unsigned r = 0; r < n_region; r++)
  oomph_info << "r at (0.5,0.0): "  
             <<"("<< 0.5+u_i[0][0] <<","<<0.0+u_i[1][0]<<","<<u_i[2][0]<<")"<< std::endl;
  
- Trace_file << TestSoln::p_mag << " " << TestSoln::Radius_of_curvature
+ Trace_file << TestSoln::h << " " << TestSoln::Radius_of_curvature
             <<" "<< u_i[0][0] <<" "<<u_i[1][0]<<" "<<u_i[2][0]<< std::endl;
 
 // Doc error and return of the square of the L2 error
@@ -901,9 +900,6 @@ int main(int argc, char **argv)
 
  // Poisson Ratio
  CommandLineArgs::specify_command_line_flag("--nu", &TestSoln::nu);
- 
- // Applied Pressure
- CommandLineArgs::specify_command_line_flag("--p", &TestSoln::p_mag);
  
  // P_step
  unsigned n_step=25;
@@ -965,7 +961,7 @@ int main(int argc, char **argv)
   sprintf(filename,"%s/fvk_circle_data%i-%f.dump",
           problem.Doc_info.directory().c_str(),
           problem.Doc_info.number(),
-          TestSoln::p_mag
+          TestSoln::h
          );
   filestream.open(filename);
   problem.dump(filestream);
