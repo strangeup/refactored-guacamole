@@ -55,6 +55,7 @@ double h = 0.2;
 double eta_u = 1;
 double eta_sigma = 1;
 double eta_bending = h;
+bool proper_truncation = true;
 
 /// Helper function to update parameters that could potentially depend on nu and
 // h
@@ -114,15 +115,47 @@ inline void get_foppl_correction_pressure(const Vector<double>& xi,const Vector<
  // Basic ordinates
  const double x=xi[0], Chi = 1.0 - Power(h*Sin(x),2);
 
- // Pressure for cheeky bend to ellipse case
- pressure[0] = -(Power(h,4)*Cos(x)*(Chi*(3 + Chi*(4 - Sqrt(Chi) - 7*Chi + 
-  5*Power(Chi,1.5))) + (-3 + Chi*(-1 - 2*Chi + 3*Power(Chi,1.5)))*Power(h,2)*
-  Power(Cos(x),2))*Sin(x))/(12.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+ // Pressure for bending to (approximately) ellipse case
+ if (proper_truncation)
+  {
+   /*
+   // Properly Truncated - with curvature ~ h 
+   // This solution has less extreme curvature so not as strong as next test 
+   pressure[0] = -(Power(h,4)*Cos(x)*Sin(x))/(-3 + 3*Power(nu,2));
 
- pressure[1] = 0.0;
+   pressure[1] = 0.0;
 
+   pressure[2] = -(Chi*(3 + Chi*(-1 - 4*Sqrt(Chi) - 2*Chi + 5*Power(Chi,1.5)))
+    *Power(h,3)*Cos(x) + (-3 + 2*Chi + Power(Chi,2.5))*Power(h,5)*Power(Cos(x),3))
+    /(12.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+
+   */
+   // Properly Truncated - with curvature ~ 5 h 
+   const double Chi = 1.0- Power(5*h*Sin(x),2);
+   pressure[0] =-(25*Power(h,4)*Sin(2*x))/(6.*(-1 + Power(nu,2)));
+   pressure[2] =-(5*Power(h,3)*Cos(x)*(2*Chi*(3 + Chi*(-1 - 4*Sqrt(Chi) - 
+    2*Chi + 5*Power(Chi,1.5))) + 50*(-1 + Sqrt(Chi)*(2 + (-2 + Chi)*Chi))
+    *Power(h,2)*Power(Cos(x),2) - 625*(1 + Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))
+    /(24.*Power(Chi,2.5)*(-1 + Power(nu,2))); 
+  }
+
+ else /* if not truncated and Christoffel term */
+  {
+   pressure[0] = -(Power(h,4)*Cos(x)*(Chi*(3 + Chi*(4 - Sqrt(Chi) - 7*Chi + 
+    5*Power(Chi,1.5))) + (-3 + Chi*(-1 - 2*Chi + 3*Power(Chi,1.5)))*Power(h,2)*
+    Power(Cos(x),2))*Sin(x))/(12.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+
+   pressure[1] = 0.0;
+
+   pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-12 - 3*Sqrt(Chi) + 26*Chi 
+    - 6*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))
+    *(11 + Sqrt(Chi) - 11*Chi - Power(Chi,1.5) - 4*Power(Chi,2) + 6*Power(Chi,3))
+    *Power(h,2)*Power(Cos(x),2) + (4 - 5*Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))
+    /(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+  }
  // No Christoffel term
  /*
+ else if (no_christoffel)
  pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-4 - 11*Sqrt(Chi) + 18*Chi 
   + 2*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))
   *(13 - Sqrt(Chi) - 13*Chi + Power(Chi,1.5) - 2*Power(Chi,2) + 6*Power(Chi,3))
@@ -130,20 +163,16 @@ inline void get_foppl_correction_pressure(const Vector<double>& xi,const Vector<
   /(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
  */
  
- // With Christoffel term
- pressure[2] =-(Power(h,3)*Cos(x)*(Chi*(6 + Chi*(-12 - 3*Sqrt(Chi) + 26*Chi 
-  - 6*Power(Chi,1.5) - 20*Power(Chi,2) + 13*Power(Chi,2.5))) + 2*(-1 + Sqrt(Chi))
-  *(11 + Sqrt(Chi) - 11*Chi - Power(Chi,1.5) - 4*Power(Chi,2) + 6*Power(Chi,3))
-  *Power(h,2)*Power(Cos(x),2) + (4 - 5*Sqrt(Chi))*Power(h,4)*Power(Sin(2*x),2)))
-  /(48.*Power(Chi,2.5)*(-1 + Power(nu,2)));
+ 
  }
 
+ // Wrapper to allow output of solution
  void pressure(const Vector<double>& xi, Vector<double>& pressure)
   {
    get_foppl_correction_pressure(xi,Vector<double>(3),DenseMatrix<double>(2,2),Vector<double>(3),pressure);
   }
 
-// Alias for pressurre function 
+// Alias for pressure function 
 typedef void (*PressureFctPt)(const Vector<double>& xi,const Vector<double>& ui,
  const DenseMatrix<double>& dui_dxj, const Vector<double>& ni, 
  Vector<double>& pressure);
@@ -204,6 +233,7 @@ void get_exact_w(const Vector<double>& xi, Vector<double>& w)
  double (*Cos)(double theta);
  double (*Sqrt)(double theta);
  EllipticE = 0;
+ // IF we have boost use it
  #ifdef OOMPH_HAS_BOOST
  EllipticE = boost::math::ellint_2;
  #endif
@@ -222,14 +252,30 @@ void get_exact_w(const Vector<double>& xi, Vector<double>& w)
  // Now fill in
  const unsigned ndisp = 3, ndoftype = 6;
  w=Vector<double>(ndisp*ndoftype,0.0);
- // In--plane displacement
- w[0] = -x + EllipticE(h,x);
- w[1] = -1 + Sqrt(1 - Power(h,2)*Power(Sin(x),2));
- w[3] = -((Power(h,2)*Cos(x)*Sin(x))/Sqrt(1 - Power(h,2)*Power(Sin(x),2)));
- // Out-of-plane displacement
- w[2*ndoftype + 0] = h*(-1 + Cos(x));
- w[2*ndoftype + 1] = -(h*Sin(x));
- w[2*ndoftype + 3] = -(h*Cos(x));;
+
+ // Curvature ~ 5 h 
+ if (proper_truncation)
+  {
+  // In--plane displacement
+  w[0] = -x + EllipticE(5*h,x);
+  w[1] = -1 + Sqrt(1 - Power(5*h,2)*Power(Sin(x),2));
+  w[3] = -((Power(5*h,2)*Cos(x)*Sin(x))/Sqrt(1 - Power(5*h,2)*Power(Sin(x),2)));
+  // Out-of-plane displacement
+  w[2*ndoftype + 0] = 5*h*(-1 + Cos(x));
+  w[2*ndoftype + 1] = -(5*h*Sin(x));
+  w[2*ndoftype + 3] = -(5*h*Cos(x));;
+  }
+ else /* if not truncated use the solution defined with curvature ~ h */ 
+  {
+  // In--plane displacement
+  w[0] = -x + EllipticE(h,x);
+  w[1] = -1 + Sqrt(1 - Power(h,2)*Power(Sin(x),2));
+  w[3] = -((Power(h,2)*Cos(x)*Sin(x))/Sqrt(1 - Power(h,2)*Power(Sin(x),2)));
+  // Out-of-plane displacement
+  w[2*ndoftype + 0] = h*(-1 + Cos(x));
+  w[2*ndoftype + 1] = -(h*Sin(x));
+  w[2*ndoftype + 3] = -(h*Cos(x));
+  }
 }
 
 // Bool for high resolution
@@ -303,6 +349,7 @@ void enable_finite_difference_jacobian()
   el_pt->enable_finite_difference_jacobian();
  }
 }
+
 /// Disable finite element Jacobian
 void disable_finite_difference_jacobian()
  {
@@ -315,6 +362,30 @@ void disable_finite_difference_jacobian()
   el_pt->disable_finite_difference_jacobian();
  }
 }
+
+/// Loop and disable the truncation
+void disable_proper_truncation()
+  {
+   // Loop over all elements and reset the values
+   unsigned n_element = Bulk_mesh_pt->nelement();
+   for(unsigned e=0;e<n_element;e++)
+   {
+   // Special cast
+   LargeDisplacementPlateC1CurvedBellElement<2,2,5,FoepplVonKarmanCorrectionEquations>* 
+    el_pt = dynamic_cast<LargeDisplacementPlateC1CurvedBellElement
+    <2,2,5,FoepplVonKarmanCorrectionEquations>*>(Bulk_mesh_pt->element_pt(e));
+   // Check Cast worked 
+   if(el_pt == 0)
+   {
+    oomph_info<<"Could not disable proper truncation flag because dynamic_cast failed. Continuing."<<std::endl;
+   }
+   else
+    {
+     el_pt->disable_proper_truncation();
+    }
+   }
+  }
+
 
 /// Doc the solution
 void doc_solution(const std::string& comment="");
@@ -935,6 +1006,7 @@ for (unsigned r = 0; r < n_region; r++)
  // Doc L2 error and norm of solution
  oomph_info << "Error of computed solution: " << sqrt(dummy_error)<< std::endl;
  oomph_info << "Norm of computed solution: "  << sqrt(zero_norm)  << std::endl;
+ oomph_info << "Rel error of computed solution: " << sqrt(dummy_error)/sqrt(zero_norm)<< std::endl;
 
  // Find the solution at r=0
  //   // ----------------------
@@ -1080,26 +1152,42 @@ int main(int argc, char **argv)
   {
   // Test case parameter
   // Problem instance
+  TestSoln::h = 0.075;//75;
   UnstructuredFvKProblem<LargeDisplacementPlateC1CurvedBellElement<2,2,5,KoiterSteigmannPlateEquations> >problem_1(element_area);
+  const double h_backup = TestSoln::h;
+  TestSoln::h *= 1.1;
   problem_1.set_initial_values_to_exact_solution();
+  TestSoln::h = h_backup;
+  // Update just in case
+  TestSoln::update_problem_parameters();
   problem_1.pressure_fct_pt() = &TestSoln::get_koiter_steigmann_pressure;
   // Problem instance
   UnstructuredFvKProblem<LargeDisplacementPlateC1CurvedBellElement<2,2,5,FoepplVonKarmanCorrectionEquations> >problem_2(element_area);
   problem_2.set_initial_values_to_exact_solution();
   problem_2.pressure_fct_pt() = &TestSoln::get_foppl_correction_pressure;
-
+  // IF we are doing proper truncation
+  if(!TestSoln::proper_truncation)
+   {problem_2.disable_proper_truncation();}
+  // Use FD jacobian
+  if(use_fd_jacobian)
+   {
+    problem_1.enable_finite_difference_jacobian();
+    problem_2.enable_finite_difference_jacobian();
+   }
+  
   // The problem we are interested in solving based on flag
   Problem* problem_pt;
   // Use Koiter Steigmann
   if(!do_fvk_correction)
-   {problem_pt = &problem_1; }
+   {problem_pt = &problem_1;}
   // Use FvK correction
   else
-   {problem_pt = &problem_2; }
+   {problem_pt = &problem_2;}
 
   // Change some tolerances
   problem_pt->max_residuals()=1e10;
   problem_pt->max_newton_iterations()=30;
+  problem_pt->newton_solver_tolerance()=1e-11;
   // Newton Solve
   problem_pt->newton_solve();
   exit(0);
