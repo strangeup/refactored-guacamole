@@ -56,6 +56,7 @@ double eta_u = 1;
 double eta_sigma = 1;
 double eta_bending = h;
 bool proper_truncation = true;
+bool do_fvk_correction = false;
 
 /// Helper function to update parameters that could potentially depend on nu and
 // h
@@ -254,7 +255,7 @@ void get_exact_w(const Vector<double>& xi, Vector<double>& w)
  w=Vector<double>(ndisp*ndoftype,0.0);
 
  // Curvature ~ 5 h 
- if (proper_truncation)
+ if (proper_truncation && (do_fvk_correction) )
   {
   // In--plane displacement
   w[0] = -x + EllipticE(5*h,x);
@@ -1140,7 +1141,7 @@ int main(int argc, char **argv)
    command_line_flag_has_been_set("--high_resolution");
 
  // Set the flag 
- const bool do_fvk_correction=CommandLineArgs::
+ TestSoln::do_fvk_correction=CommandLineArgs::
    command_line_flag_has_been_set("--do_fvk_correction");
 
  // Set the flag 
@@ -1166,7 +1167,7 @@ int main(int argc, char **argv)
   problem_2.set_initial_values_to_exact_solution();
   problem_2.pressure_fct_pt() = &TestSoln::get_foppl_correction_pressure;
   // IF we are doing proper truncation
-  if(!TestSoln::proper_truncation)
+  if(!(TestSoln::proper_truncation))
    {problem_2.disable_proper_truncation();}
   // Use FD jacobian
   if(use_fd_jacobian)
@@ -1178,7 +1179,7 @@ int main(int argc, char **argv)
   // The problem we are interested in solving based on flag
   Problem* problem_pt;
   // Use Koiter Steigmann
-  if(!do_fvk_correction)
+  if(!TestSoln::do_fvk_correction)
    {problem_pt = &problem_1;}
   // Use FvK correction
   else
@@ -1209,7 +1210,7 @@ int main(int argc, char **argv)
  // The problem we are interested in solving based on flag
  ProblemWithDocInfo* problem_pt;
  // Use Koiter Steigmann
- if(!do_fvk_correction)
+ if(!TestSoln::do_fvk_correction)
   {problem_pt = &problem_1; }
  // Use FvK correction
  else
