@@ -52,5 +52,5 @@ circular_disc_manufactured_LDADD = -L@libdir@ -lC1_large_displacement_plate_mode
 # Automake will replace the variable @includedir@ with the actual
 # include directory.
 
-AM_CPPFLAGS += -I@includedir@ -I$(pathtoeigen) -I$(pathtospectra) -Wall #-g -DRANGE_CHECK -DPARANOID
+AM_CPPFLAGS += -fPIC -I@includedir@ -I$(pathtoeigen) -I$(pathtospectra) -Wall -DOOMPH_HAS_BOOST #-g -DRANGE_CHECK -DPARANOID
 #EXTRA_DIST = Circle1.1.ele Circle1.1.node Circle1.1.poly
